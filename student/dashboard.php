@@ -2,17 +2,30 @@
 require_once '../config.php';
 checkStudentAuth();
 
-// Get stats for using stored procedure on dashbord
+// Get stats using database views
 $user_id = $_SESSION['user_id'];
 
-$result = callProcedure($conn, 'sp_GetUserRequestsStats', 'i', [$user_id]);
-$stats = $result->fetch_assoc();
+// Use the view_student_dashboard view to get statistics
+$stmt = $conn->prepare("SELECT * FROM view_student_dashboard WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$totalRequests = $stats['total_requests'];
-$pendingRequests = $stats['pending_requests'];
-$approvedRequests = $stats['approved_requests'];
-$completedRequests = $stats['completed_requests'];
-$unreadNotifications = $stats['unread_notifications'];
+if ($result->num_rows > 0) {
+    $stats = $result->fetch_assoc();
+    $totalRequests = $stats['total_requests'];
+    $pendingRequests = $stats['pending_requests'];
+    $approvedRequests = $stats['approved_requests'];
+    $completedRequests = $stats['completed_requests'];
+    $unreadNotifications = $stats['unread_notifications'];
+} else {
+    // Default values if user has no records
+    $totalRequests = 0;
+    $pendingRequests = 0;
+    $approvedRequests = 0;
+    $completedRequests = 0;
+    $unreadNotifications = 0;
+}
 
 // Get notifications (these can be triggered from backend)
 $stmt = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC");
@@ -20,44 +33,41 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Get latest requests using stored procedure
-$result = callProcedure($conn, 'sp_GetUserRecentRequests', 'ii', [$user_id, 5]);
-$latestRequests = $result->fetch_all(MYSQLI_ASSOC);
+// Get latest requests using view instead of stored procedure
+$stmt = $conn->prepare("SELECT * FROM view_student_recent_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$latestRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Real-time notifications using trigger system
-$notificationsHTML = '';
-foreach ($notifications as $notification) {
-    $timeAgo = getTimeAgo($notification['created_at']);
-    $notificationsHTML .= '
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto">New Notification</strong>
-                <small>'.$timeAgo.'</small>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-                '.$notification['message'].'
-            </div>
-        </div>
-    </div>';
+$announcement = null;
+
+$stmt = $conn->prepare("CALL get_unseen_announcement_for_user(?)");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+
+
+$stmt->close();
+$conn->next_result();
+
+$stmt = $conn->prepare("CALL GetActiveUnviewedAnnouncement(?)");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$announcements = $result->fetch_all(MYSQLI_ASSOC);
+
+
+if ($result && $result->num_rows > 0) {
+    $announcement = $result->fetch_assoc(); 
+    
+if ($announcement && !isset($_SESSION['announcement_shown'])) {
+    $_SESSION['announcement_shown'] = true;
+    $showAnnouncement = true;
+} else {
+    $showAnnouncement = false;
 }
 
-// Helper function to get time ago
-function getTimeAgo($timestamp) {
-    $time = strtotime($timestamp);
-    $now = time();
-    $diff = $now - $time;
-    
-    if ($diff < 60) {
-        return "Just now";
-    } elseif ($diff < 3600) {
-        return floor($diff/60) . " minutes ago";
-    } elseif ($diff < 86400) {
-        return floor($diff/3600) . " hours ago";
-    } else {
-        return floor($diff/86400) . " days ago";
-    }
 }
 ?>
 
@@ -179,7 +189,16 @@ function getTimeAgo($timestamp) {
 </head>
 <body>
     <!-- Display notification toasts if any -->
-    <?php echo $notificationsHTML; ?>
+    <?php $notificationsHTML = '';
+
+// Example code to populate it
+while ($row = mysqli_fetch_assoc($result)) {
+    $notificationsHTML .= '<li>' . htmlspecialchars($row['message']) . '</li>';
+}
+
+// Then you can use it safely on line 177:
+echo $notificationsHTML;
+ ?>
     
     <!-- Topbar/Header -->
 <nav class="navbar navbar-expand-lg navbar-dark custom-topbar px-3">
@@ -238,6 +257,12 @@ function getTimeAgo($timestamp) {
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="announcements.php">
+                                <i class="fas fa-bullhorn me-2"></i>
+                                Announcements
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="new_request.php">
                                 <i class="fas fa-plus-circle me-2"></i>
                                 New Request
@@ -268,15 +293,6 @@ function getTimeAgo($timestamp) {
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Student Dashboard</h1>
                 </div>
-
-                <!-- Notifications -->
-                <?php if (count($notifications) > 0): ?>
-                <div class="alert alert-info alert-dismissible fade show" role="alert">
-                    <strong>You have <?php echo count($notifications); ?> new notification(s)!</strong> 
-                    <a href="notifications.php" class="alert-link">Click here to view them</a>.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                <?php endif; ?>
                
 
                 <!-- Stats Cards -->
@@ -468,6 +484,66 @@ function getTimeAgo($timestamp) {
     // Check every 30 seconds
     setInterval(checkNotifications, 30000);
 </script>
+<?php if (!empty($announcements) && !isset($_SESSION['announcement_shown'])): ?>
+<?php foreach ($announcements as $index => $announcement): ?>
+  <?php $_SESSION['announcement_shown'] = true; ?>
+<div class="modal fade" id="announcementModal<?php echo $index; ?>" tabindex="-1" aria-labelledby="announcementModalLabel<?php echo $index; ?>" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="announcementModalLabel<?php echo $index; ?>"><?php echo htmlspecialchars($announcement['title']); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-index="<?php echo $index; ?>"></button>
+      </div>
+      <div class="modal-body">
+        <?php if (!empty($announcement['photo'])): ?>
+          <img src="../<?php echo htmlspecialchars($announcement['photo']); ?>" class="img-fluid mb-3" alt="Announcement Image">
+        <?php  endif; ?>
+        <p><?php echo nl2br(htmlspecialchars($announcement['body'])); ?></p>
+        <p class="text-muted small">
+          Active from <?php echo date('F j, Y', strtotime($announcement['start_date'])); ?>
+          to <?php echo date('F j, Y', strtotime($announcement['end_date'])); ?>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-next" data-bs-dismiss="modal" data-index="<?php echo $index; ?>">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
+
+<script>
+  const announcements = <?php echo json_encode($announcements); ?>;
+  const modals = [];
+
+  announcements.forEach((_, index) => {
+    modals[index] = new bootstrap.Modal(document.getElementById('announcementModal' + index));
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    let current = 0;
+
+    function showNextModal() {
+      if (current < modals.length) {
+        modals[current].show();
+
+        // Send AJAX to mark viewed
+        fetch('mark_announcement_viewed.php?id=' + announcements[current].id);
+
+        // When closed, show next one
+        const modalElement = document.getElementById('announcementModal' + current);
+        modalElement.addEventListener('hidden.bs.modal', () => {
+          current++;
+          showNextModal();
+        }, { once: true });
+      }
+    }
+
+    showNextModal();
+  });
+</script>
+<?php endif; ?>
+
 
 
 </body>

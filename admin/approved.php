@@ -89,6 +89,18 @@ usort($approvedRequests, function($a, $b) {
                         <a class="nav-link" href="registration_list.php"><i class="fas fa-user-check me-2"></i> Registration List</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="create_announcement.php">
+                            <i class="fas fa-bullhorn me-2"></i>
+                            Create Announcement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="manage_announcements.php">
+                            <i class="fas fa-tools me-2"></i>
+                            Announcement List
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="admin_notifications.php">
                             <i class="fas fa-bell me-2"></i> Notifications
                             <?php

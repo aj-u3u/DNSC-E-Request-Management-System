@@ -111,6 +111,12 @@ $total_pages = ceil($total_records / $limit);
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="announcements.php">
+                                <i class="fas fa-bullhorn me-2"></i>
+                                Announcements
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="new_request.php">
                                 <i class="fas fa-plus-circle me-2"></i>
                                 New Request

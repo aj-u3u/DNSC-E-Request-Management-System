@@ -45,8 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Refresh user data after update
     $user = fetchUser($conn, $id);
 }
-
-
 ?>
 
 <!DOCTYPE html>
@@ -55,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>View Registration - DNSC E-Request System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         .info-label { font-weight: 600; }
         .info-box {
@@ -65,9 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
         .photo-preview {
-            max-width: 200px;
+            max-width: 120px;
+            max-height: 120px;
             border: 1px solid #ccc;
-            border-radius: 6px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .photo-preview:hover {
+            transform: scale(1.05);
         }
         .status-badge {
             font-weight: bold;
@@ -95,39 +98,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-body info-box">
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <p><span class="info-label">Full Name:</span> <?php echo htmlspecialchars($user['full_name']); ?></p>
-                    <p><span class="info-label">Student ID:</span> <?php echo htmlspecialchars($user['stud_id']); ?></p>
-                    <p><span class="info-label">Institute:</span> <?php echo htmlspecialchars($user['institute']); ?></p>
-                    <p><span class="info-label">Program:</span> <?php echo htmlspecialchars($user['program']); ?></p>
+                    <p><span class="info-label">Full Name:</span> <?= htmlspecialchars($user['full_name']) ?></p>
+                    <p><span class="info-label">Student ID:</span> <?= htmlspecialchars($user['stud_id']) ?></p>
+                    <p><span class="info-label">Institute:</span> <?= htmlspecialchars($user['institute']) ?></p>
+                    <p><span class="info-label">Program:</span> <?= htmlspecialchars($user['program']) ?></p>
                 </div>
                 <div class="col-md-6">
-                    <p><span class="info-label">Email:</span> <?php echo htmlspecialchars($user['email']); ?></p>
-                    <p><span class="info-label">Requested Role:</span> 
-                        <?php echo htmlspecialchars(ucfirst($user['pre_select_role'] ?? 'Not specified')); ?>
-                    </p>
-                    <p><span class="info-label">Assigned Role:</span> 
-                        <?php echo htmlspecialchars($user['role'] ?? 'Not assigned'); ?>
-                    </p>
+                    <p><span class="info-label">Email:</span> <?= htmlspecialchars($user['email']) ?></p>
+                    <p><span class="info-label">Requested Role:</span> <?= htmlspecialchars(ucfirst($user['pre_select_role'] ?? 'Not specified')) ?></p>
+                    <p><span class="info-label">Assigned Role:</span> <?= htmlspecialchars($user['role'] ?? 'Not assigned') ?></p>
                     <p><span class="info-label">Verification Status:</span>
                         <span class="badge status-badge bg-<?php
                             echo match($user['verification_status']) {
-                                'approved' => 'success',
+                                'approved_student', 'approved_alumni' => 'success',
                                 'rejected' => 'danger',
                                 'pending' => 'warning',
                                 default => 'secondary'
                             };
                         ?>">
-                            <?php echo ucwords($user['verification_status']); ?>
+                            <?= ucwords(str_replace('_', ' ', $user['verification_status'])) ?>
                         </span>
                     </p>
                     <?php if ($user['verification_status'] === 'rejected' && $user['rejection_reason']): ?>
-                        <p><span class="info-label">Rejection Reason:</span> <?php echo htmlspecialchars($user['rejection_reason']); ?></p>
+                        <p><span class="info-label">Rejection Reason:</span> <?= htmlspecialchars($user['rejection_reason']) ?></p>
                     <?php endif; ?>
                     <?php if ($user['approved_at']): ?>
-                        <p><span class="info-label">Approved At:</span> <?php echo htmlspecialchars($user['approved_at']); ?></p>
+                        <p><span class="info-label">Approved At:</span> <?= htmlspecialchars($user['approved_at']) ?></p>
                     <?php endif; ?>
                     <?php if ($user['rejected_at']): ?>
-                        <p><span class="info-label">Rejected At:</span> <?php echo htmlspecialchars($user['rejected_at']); ?></p>
+                        <p><span class="info-label">Rejected At:</span> <?= htmlspecialchars($user['rejected_at']) ?></p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -135,7 +134,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mb-3">
                 <p class="info-label">Uploaded Photo:</p>
                 <?php if (!empty($user['uploadphoto'])): ?>
-                    <img src="../uploads/<?php echo htmlspecialchars($user['uploadphoto']); ?>" alt="User Photo" class="photo-preview">
+                    <img src="../uploads/<?= htmlspecialchars($user['uploadphoto']) ?>"
+                         alt="User Photo"
+                         class="photo-preview"
+                         data-bs-toggle="modal"
+                         data-bs-target="#photoModal">
                 <?php else: ?>
                     <p class="text-muted">No photo uploaded.</p>
                 <?php endif; ?>
@@ -156,5 +159,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     <?php endif; ?>
 </div>
+
+<!-- Photo Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="photoModalLabel">Photo Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img src="../uploads/<?= htmlspecialchars($user['uploadphoto']) ?>" alt="User Photo"
+             class="img-fluid rounded border" style="max-height: 500px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

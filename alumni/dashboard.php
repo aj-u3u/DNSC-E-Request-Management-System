@@ -4,18 +4,27 @@ checkAlumniAuth();
 
 $user_id = $_SESSION['user_id'];
 
-// Count requests
-$result = $conn->query("SELECT COUNT(*) as total FROM alumni_requests WHERE user_id = $user_id");
-$totalRequests = $result->fetch_assoc()['total'];
+// Use the view_alumni_dashboard view to get statistics
+$stmt = $conn->prepare("SELECT * FROM view_alumni_dashboard WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
 
-$result = $conn->query("SELECT COUNT(*) as pending FROM alumni_requests WHERE user_id = $user_id AND status = 'pending'");
-$pendingRequests = $result->fetch_assoc()['pending'];
-
-$result = $conn->query("SELECT COUNT(*) as approved FROM alumni_requests WHERE user_id = $user_id AND status = 'approved'");
-$approvedRequests = $result->fetch_assoc()['approved'];
-
-$result = $conn->query("SELECT COUNT(*) as completed FROM alumni_requests WHERE user_id = $user_id AND status = 'completed'");
-$completedRequests = $result->fetch_assoc()['completed'];
+if ($result->num_rows > 0) {
+    $stats = $result->fetch_assoc();
+    $totalRequests = $stats['total_requests'];
+    $pendingRequests = $stats['pending_requests'];
+    $approvedRequests = $stats['approved_requests'];
+    $completedRequests = $stats['completed_requests'];
+    $unreadNotifications = $stats['unread_notifications'];
+} else {
+    // Default values if alumni has no records
+    $totalRequests = 0;
+    $pendingRequests = 0;
+    $approvedRequests = 0;
+    $completedRequests = 0;
+    $unreadNotifications = 0;
+}
 
 // Get notif sa triggers
 $stmt = $conn->prepare("SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC");
@@ -23,10 +32,30 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $notifications = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-$stmt = $conn->prepare("SELECT * FROM alumni_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
+// Get latest requests using view
+$stmt = $conn->prepare("SELECT * FROM view_alumni_recent_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT 5");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $latestRequests = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+$stmt = $conn->prepare("CALL GetActiveUnviewedAnnouncement(?)");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$announcements = $result->fetch_all(MYSQLI_ASSOC);
+
+
+if ($result && $result->num_rows > 0) {
+    $announcement = $result->fetch_assoc(); 
+    
+if ($announcement && !isset($_SESSION['announcement_shown'])) {
+    $_SESSION['announcement_shown'] = true;
+    $showAnnouncement = true;
+} else {
+    $showAnnouncement = false;
+}
+
+}
 
 // Real-time notifs sa triggers
 $notificationsHTML = '';
@@ -63,6 +92,7 @@ function getTimeAgo($timestamp) {
         return floor($diff/86400) . " days ago";
     }
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -70,7 +100,7 @@ function getTimeAgo($timestamp) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Alumni Dashboard - DNSC E-Request System</title>
+  <title>Alumni Dashboard - DNSC E-Request System</title> 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -195,6 +225,12 @@ function getTimeAgo($timestamp) {
               <i class="fas fa-tachometer-alt me-2"></i> Dashboard
             </a>
           </li>
+            <li class="nav-item">
+              <a class="nav-link" href="announcements.php">
+                  <i class="fas fa-bullhorn me-2"></i>
+                  Announcements
+              </a>
+          </li>
           <li class="nav-item">
             <a class="nav-link" href="new_request.php">
               <i class="fas fa-plus-circle me-2"></i> New Request
@@ -226,15 +262,6 @@ function getTimeAgo($timestamp) {
         <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
           <h1 class="h2">Alumni Dashboard</h1>
         </div>
-
-        <!-- Notifications -->
-        <?php if (count($notifications) > 0): ?>
-          <div class="alert alert-info alert-dismissible fade show">
-            <strong>You have <?php echo count($notifications); ?> new notification(s)!</strong>
-            <a href="notifications.php" class="alert-link">Click here to view them</a>.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        <?php endif; ?>
 
         <!-- Stats Cards -->
         <div class="row my-4">
@@ -387,5 +414,66 @@ function getTimeAgo($timestamp) {
     // Check every 30 seconds
     setInterval(checkNotifications, 30000);
   </script>
+<?php if (!empty($announcements) && !isset($_SESSION['announcement_shown'])): ?>
+<?php foreach ($announcements as $index => $announcement): ?>
+  <?php $_SESSION['announcement_shown'] = true; ?>
+<div class="modal fade" id="announcementModal<?php echo $index; ?>" tabindex="-1" aria-labelledby="announcementModalLabel<?php echo $index; ?>" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="announcementModalLabel<?php echo $index; ?>"><?php echo htmlspecialchars($announcement['title']); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" data-index="<?php echo $index; ?>"></button>
+      </div>
+      <div class="modal-body">
+        <?php if (!empty($announcement['photo'])): ?>
+          <img src="../<?php echo htmlspecialchars($announcement['photo']); ?>" class="img-fluid mb-3" alt="Announcement Image">
+        <?php  endif; ?>
+        <p><?php echo nl2br(htmlspecialchars($announcement['body'])); ?></p>
+        <p class="text-muted small">
+          Active from <?php echo date('F j, Y', strtotime($announcement['start_date'])); ?>
+          to <?php echo date('F j, Y', strtotime($announcement['end_date'])); ?>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-next" data-bs-dismiss="modal" data-index="<?php echo $index; ?>">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endforeach; ?>
+
+<script>
+  const announcements = <?php echo json_encode($announcements); ?>;
+  const modals = [];
+
+  announcements.forEach((_, index) => {
+    modals[index] = new bootstrap.Modal(document.getElementById('announcementModal' + index));
+  });
+
+  window.addEventListener('DOMContentLoaded', () => {
+    let current = 0;
+
+    function showNextModal() {
+      if (current < modals.length) {
+        modals[current].show();
+
+        // Send AJAX to mark viewed
+        fetch('mark_announcement_viewed.php?id=' + announcements[current].id);
+
+        // When closed, show next one
+        const modalElement = document.getElementById('announcementModal' + current);
+        modalElement.addEventListener('hidden.bs.modal', () => {
+          current++;
+          showNextModal();
+        }, { once: true });
+      }
+    }
+
+    showNextModal();
+  });
+</script>
+<?php endif; ?>
+
+
 </body>
 </html>

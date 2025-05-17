@@ -93,7 +93,7 @@ $total_pages = ceil($total_records / $limit);
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
+                    <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="text-center mb-4">
@@ -105,6 +105,12 @@ $total_pages = ceil($total_records / $limit);
                             <a class="nav-link" href="dashboard.php">
                                 <i class="fas fa-tachometer-alt me-2"></i>
                                 Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="announcements.php">
+                                <i class="fas fa-bullhorn me-2"></i>
+                                Announcements
                             </a>
                         </li>
                         <li class="nav-item">
@@ -124,12 +130,10 @@ $total_pages = ceil($total_records / $limit);
                                 <i class="fas fa-bell me-2"></i>
                                 Notifications
                             </a>
-                        </li> 
-                    
+                        </li>
                     </ul>
                 </div>
             </div>
-
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">

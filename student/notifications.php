@@ -136,6 +136,12 @@ $unread_count = $stmt->get_result()->fetch_assoc()['unread'];
                 </div>
                 <ul class="nav flex-column">
                     <li class="nav-item"><a class="nav-link text-white" href="dashboard.php"><i class="fas fa-tachometer-alt me-2"></i> Dashboard</a></li>
+                    <li class="nav-item">
+                            <a class="nav-link" href="announcements.php">
+                                <i class="fas fa-bullhorn me-2"></i>
+                                Announcements
+                            </a>
+                        </li>
                     <li class="nav-item"><a class="nav-link text-white" href="new_request.php"><i class="fas fa-plus-circle me-2"></i> New Request</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="my_requests.php"><i class="fas fa-clipboard-list me-2"></i> My Requests</a></li>
                     <li class="nav-item">

@@ -17,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
 
     $validationErrors = [];
 
-    // Validate inputs
     if (empty($full_name)) $validationErrors[] = 'Full name is required.';
     if (empty($stud_id)) $validationErrors[] = 'Student ID is required.';
     if (empty($institute)) $validationErrors[] = 'Institute is required.';
@@ -28,7 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
     if (empty($pre_select_role)) $validationErrors[] = 'Role is required.';
     if ($photo['error'] !== 0) $validationErrors[] = 'Photo upload failed.';
 
-    // Check if email exists
     $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -37,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
     $stmt->close();
 
     if (empty($validationErrors)) {
-        // Upload photo
         $uploadDir = "uploads/";
         $photoName = uniqid() . '_' . basename($photo['name']);
         $targetFile = $uploadDir . $photoName;
@@ -45,7 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
 
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-        // Insert into users table
         $stmt = $conn->prepare("INSERT INTO users (stud_id, full_name, institute, program, email, password, uploadphoto, verification_status, pre_select_role, role, created_at) 
         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NULL, NOW())");
         $stmt->bind_param("ssssssss", $stud_id, $full_name, $institute, $program, $email, $hashed_password, $photoName, $pre_select_role);    
@@ -65,7 +61,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
 }
 ?>
 
-<!-- HTML START -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,6 +73,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
         .card { border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .card-header { background-color: #198754; color: white; }
         .btn-primary { width: 100%; background-color: #198754; }
+        #preview-img {
+            margin-top: 10px;
+            max-width: 120px;
+            max-height: 120px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .modal-img {
+            max-width: 100%;
+            height: auto;
+        }
     </style>
 </head>
 <body>
@@ -133,9 +140,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
                     <input type="password" name="confirm_password" class="form-control" required>
                 </div>
                 <div class="form-group">
-                    <label>Upload IDPhoto</label>
+                    <label>Upload ID Photo</label>
                     <input type="file" name="photo" class="form-control-file" accept="image/*" onchange="previewPhoto(this)" required>
-                    <img id="preview-img" class="img-thumbnail" onclick="openImageModal()" />
+                    <img id="preview-img" onclick="openImageModal()" />
                 </div>
                 <div class="form-group">
                     <label>Status</label>
@@ -169,7 +176,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
                     </div>
                 </div>
 
+                <!-- Photo Preview Modal -->
+                <div class="modal fade" id="photoModal" tabindex="-1" role="dialog">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Photo Preview</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                  <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body text-center">
+                                <img id="modal-photo" class="modal-img" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </form>
+            <div class="text-center mt-3">
+                <a href="login.php">Already have an account? Login here</a>
+            </div>
         </div>
     </div>
 </div>
@@ -178,7 +205,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registerbtn'])) {
 function updatePrograms() {
     const institute = document.getElementById('institute').value;
     const programSelect = document.getElementById('program');
-
     const programs = {
         IC: ['BSIT', 'BSCS'],
         IE: ['BSCE', 'BSEE'],
@@ -186,7 +212,6 @@ function updatePrograms() {
         IAS: ['AB English', 'BS Biology'],
         IM: ['BSBA', 'BS Accountancy']
     };
-
     programSelect.innerHTML = '<option value="" disabled selected>Select Program</option>';
     if (programs[institute]) {
         programs[institute].forEach(p => {
@@ -196,6 +221,22 @@ function updatePrograms() {
             programSelect.appendChild(option);
         });
     }
+}
+
+function previewPhoto(input) {
+    const file = input.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('preview-img').src = e.target.result;
+            document.getElementById('modal-photo').src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+}
+
+function openImageModal() {
+    $('#photoModal').modal('show');
 }
 </script>
 

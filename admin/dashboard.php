@@ -2,8 +2,8 @@
 require_once '../config.php';
 checkAdminAuth();
 
-// Get dashboard statistics using stored procedure
-$result = callProcedure($conn, 'sp_GetAdminDashboardStats');
+// Get dashboard statistics using database views
+$result = $conn->query("SELECT * FROM view_admin_dashboard");
 $stats = $result->fetch_assoc();
 
 $totalRequests = $stats['total_requests'];
@@ -214,6 +214,18 @@ if(isset($_GET['mark_read']) && $_GET['mark_read'] == 'all') {
                     <li class="nav-item">
                         <a class="nav-link" href="registration_list.php">
                             <i class="fas fa-user-check me-2"></i> Registration List
+                        </a>
+                    </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="create_announcement.php">
+                            <i class="fas fa-bullhorn me-2"></i>
+                            Create Announcement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="manage_announcements.php">
+                            <i class="fas fa-tools me-2"></i>
+                            Announcement List
                         </a>
                     </li>
                      <li class="nav-item">
@@ -472,7 +484,7 @@ if(isset($_GET['mark_read']) && $_GET['mark_read'] == 'all') {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a href="../logout.php" class="btn btn-danger">Yes, Logout</a>
+                <a href="../logout.php" class="btn btn-danger">Yes, and Logout</a>
             </div>
         </div>
     </div>

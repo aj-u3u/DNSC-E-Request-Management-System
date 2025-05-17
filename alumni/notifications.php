@@ -67,12 +67,12 @@ $unread_count = $stmt->get_result()->fetch_assoc()['unread'];
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     <style>
-        .sidebar {
+   .sidebar {
             min-height: 100vh;
-            background-color: #198754;
-            color: white;
+            background-color: #2d5516;
+           color: white;
         }
-        .nav-link {
+   .nav-link {
             color: rgba(255,255,255,.8);
         }
         .nav-link:hover {
@@ -83,23 +83,46 @@ $unread_count = $stmt->get_result()->fetch_assoc()['unread'];
             background-color: rgba(255,255,255,.2);
         }
         .btn-primary {
-            background-color: #198754;
-            border-color: #198754;
+            background-color: #498428;
+            border-color: #498428;
         }
-        .btn-primary:hover {
-            background-color: #146c43;
-            border-color: #146c43;
+    .btn-primary:hover {
+            background-color: #2d5516;
+            border-color: #2d5516;
         }
-        .btn-outline-secondary {
-            color: #198754;
-            border-color: #198754;
+.btn-outline-success {
+    color: #198754;
+    border-color: #198754;
+}
+.btn-outline-success:hover {
+    background-color: #198754;
+    border-color: #198754;
+    color: white;
+}
+.btn-outline-danger {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+.alert-info {
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+    color: #0f5132;
+}
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+.page-link {
+            color: #498428;
         }
-        .btn-outline-secondary:hover {
-            background-color: #198754;
-            border-color: #198754;
-            color: white;
-        }
-        .alert-info {
+.page-item.active .page-link {
+    background-color: #198754;
+    border-color: #198754;
+}
+   .alert-info {
             background-color: #d1e7dd;
             border-color: #badbcc;
             color: #0f5132;
@@ -110,16 +133,37 @@ $unread_count = $stmt->get_result()->fetch_assoc()['unread'];
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 d-md-block sidebar collapse bg-success text-white">
-            <div class="position-sticky pt-3">
-                <div class="text-center mb-4">
-                    <h5>DNSC E-Request System</h5>
-                    <p class="text-muted">Alumni Portal</p>
-                </div>
-                <ul class="nav flex-column">
-                    <li class="nav-item"><a class="nav-link text-white" href="dashboard.php"><i class="fas fa-tachometer-alt me-2"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link text-white" href="new_request.php"><i class="fas fa-plus-circle me-2"></i> New Request</a></li>
-                    <li class="nav-item"><a class="nav-link text-white" href="my_requests.php"><i class="fas fa-clipboard-list me-2"></i> My Requests</a></li>
+      <div class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <h5>DNSC E-Request System</h5>
+                        <p class="text-light">Alumni Portal</p>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.php">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="announcements.php">
+                                <i class="fas fa-bullhorn me-2"></i>
+                                Announcements
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="new_request.php">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                New Request
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="my_requests.php">
+                                <i class="fas fa-clipboard-list me-2"></i>
+                                My Requests
+                            </a>
+                        </li>
                     <li class="nav-item">
                         <a class="nav-link active position-relative" href="notifications.php">
                             <i class="fas fa-bell me-2"></i> Notifications
@@ -128,7 +172,6 @@ $unread_count = $stmt->get_result()->fetch_assoc()['unread'];
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="nav-item mt-5"><a class="nav-link text-white" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
         </div>

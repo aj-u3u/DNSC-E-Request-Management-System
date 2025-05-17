@@ -66,10 +66,10 @@ if (isset($_GET['status'])) {
         <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 d-md-block sidebar">
             <div class="position-sticky pt-3">
-                <div class="text-center mb-4">
-                    <h5>DNSC E-Request System</h5>
-                    <p class="text-muted">Admin Panel</p>
-                </div>
+                 <div class="text-center mb-4">
+          <h5>DNSC E-Request System</h5>
+          <p class="text-white">Admin Panel</p>
+        </div>
                 <ul class="nav flex-column">
                     <li class="nav-item"><a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt me-2"></i> Dashboard</a></li>
                     <li class="nav-item"><a class="nav-link" href="requests.php"><i class="fas fa-clipboard-list me-2"></i> All Requests</a></li>
@@ -77,6 +77,18 @@ if (isset($_GET['status'])) {
                     <li class="nav-item"><a class="nav-link" href="approved.php"><i class="fas fa-check-circle me-2"></i> Approved Requests</a></li>
                     <li class="nav-item"><a class="nav-link" href="completed.php"><i class="fas fa-check-double me-2"></i> Completed Requests</a></li>
                     <li class="nav-item"><a class="nav-link active" href="registration_list.php"><i class="fas fa-user-check me-2"></i> Registration List</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="create_announcement.php">
+                            <i class="fas fa-bullhorn me-2"></i>
+                            Create Announcement
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="manage_announcements.php">
+                            <i class="fas fa-tools me-2"></i>
+                            Announcement List
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="admin_notifications.php">
                             <i class="fas fa-bell me-2"></i> Notifications

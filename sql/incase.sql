@@ -143,12 +143,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_GetUserRequestsStats` (IN `p_use
         (SELECT COUNT(*) FROM notifications WHERE user_id = p_user_id AND is_read = 0) AS unread_notifications;
 END$$
 
-DELIMITER ;
-
-DELIMITER $$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_MarkAllNotificationsAsRead` (IN `p_user_id` INT)   
-BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_MarkAllNotificationsAsRead` (IN `p_user_id` INT)   BEGIN
     UPDATE notifications
     SET is_read = 1
     WHERE user_id = p_user_id;
@@ -156,15 +151,7 @@ BEGIN
     SELECT ROW_COUNT() AS updated_count;
 END$$
 
-DELIMITER $$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ProcessRegistration` (
-  IN `p_user_id` INT,
-  IN `p_approve` BOOLEAN,
-  IN `p_role` VARCHAR(10),
-  IN `p_rejection_reason` TEXT
-)
-BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_ProcessRegistration` (IN `p_user_id` INT, IN `p_approve` BOOLEAN, IN `p_role` VARCHAR(10), IN `p_rejection_reason` TEXT)   BEGIN
     DECLARE v_user_email VARCHAR(100);
     DECLARE v_user_name VARCHAR(100);
     
@@ -204,60 +191,45 @@ BEGIN
     END IF;
 END$$
 
-DELIMITER ;
-
-DELIMITER $$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_UpdateRequestStatus` (
-    IN `p_request_id` INT,
-    IN `p_table_source` VARCHAR(10),
-    IN `p_status` VARCHAR(20),
-    IN `p_tracking_number` VARCHAR(20),
-    IN `p_pickup_datetime` DATETIME
-)
-BEGIN
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_UpdateRequestStatus` (IN `p_request_id` INT, IN `p_table_source` VARCHAR(10), IN `p_status` VARCHAR(20), IN `p_tracking_number` VARCHAR(20), IN `p_pickup_datetime` DATETIME)   BEGIN
     DECLARE v_user_id INT;
     DECLARE v_notification_message TEXT;
     DECLARE v_request_type VARCHAR(100);
     
-    -- Get user_id and request_type based on source table
+    -- Get user_id based on source table
     IF p_table_source = 'student' THEN
-        SELECT user_id, request_type INTO v_user_id, v_request_type
-        FROM requests WHERE id = p_request_id;
-
+        SELECT user_id, request_type INTO v_user_id, v_request_type FROM requests WHERE id = p_request_id;
+        
+        -- Update the request status
         IF p_tracking_number IS NOT NULL AND p_pickup_datetime IS NOT NULL THEN
             UPDATE requests 
             SET status = p_status, 
                 tracking_number = p_tracking_number, 
-                pickup_datetime = p_pickup_datetime,
-                updated_at = NOW()
+                pickup_datetime = p_pickup_datetime 
             WHERE id = p_request_id;
         ELSE
             UPDATE requests 
-            SET status = p_status,
-                updated_at = NOW()
+            SET status = p_status
             WHERE id = p_request_id;
         END IF;
     ELSE
-        SELECT user_id, request_type INTO v_user_id, v_request_type
-        FROM alumni_requests WHERE id = p_request_id;
-
+        SELECT user_id, request_type INTO v_user_id, v_request_type FROM alumni_requests WHERE id = p_request_id;
+        
+        -- Update the request status
         IF p_tracking_number IS NOT NULL AND p_pickup_datetime IS NOT NULL THEN
             UPDATE alumni_requests 
             SET status = p_status, 
                 tracking_number = p_tracking_number, 
-                pickup_datetime = p_pickup_datetime,
-                updated_at = NOW()
+                pickup_datetime = p_pickup_datetime 
             WHERE id = p_request_id;
         ELSE
             UPDATE alumni_requests 
-            SET status = p_status,
-                updated_at = NOW()
+            SET status = p_status
             WHERE id = p_request_id;
         END IF;
     END IF;
     
-    -- Compose notification message
+    -- Create notification message based on status
     IF p_status = 'approved' THEN
         SET v_notification_message = CONCAT('Your request for ', v_request_type, ' (ID: ', p_request_id, ') has been approved. Please pick up your document on ', 
             DATE_FORMAT(p_pickup_datetime, '%M %d, %Y at %h:%i %p'), '. Your tracking number is: ', p_tracking_number);
@@ -266,14 +238,14 @@ BEGIN
     ELSEIF p_status = 'completed' THEN
         SET v_notification_message = CONCAT('Your request for ', v_request_type, ' (ID: ', p_request_id, ') has been completed. Thank you for using our service.');
     END IF;
-
-    -- Insert notification if applicable
+    
+    -- Insert notification
     IF v_notification_message IS NOT NULL THEN
-        INSERT INTO notifications (user_id, message, created_at)
-        VALUES (v_user_id, v_notification_message, NOW());
+        INSERT INTO notifications (user_id, message) 
+        VALUES (v_user_id, v_notification_message);
     END IF;
-
-    -- Return updated request details
+    
+    -- Return the updated request
     IF p_table_source = 'student' THEN
         SELECT r.*, u.full_name, u.email, u.stud_id
         FROM requests r
@@ -285,90 +257,9 @@ BEGIN
         JOIN users u ON r.user_id = u.id
         WHERE r.id = p_request_id;
     END IF;
-
-END $$
-
-DELIMITER ;
-
-
-
-
- DELIMITER $$
-
-CREATE PROCEDURE `sp_GetActiveAnnouncementForUser` (IN `p_user_id` INT)
-BEGIN
-    SELECT a.*
-    FROM announcements a
-    WHERE a.is_active = 1
-      AND NOW() BETWEEN a.start_date AND a.end_date
-      AND NOT EXISTS (
-          SELECT 1
-          FROM announcement_views av
-          WHERE av.announcement_id = a.id AND av.user_id = p_user_id
-      )
-    ORDER BY a.start_date DESC
-    LIMIT 1;
 END$$
 
 DELIMITER ;
-
-
-
-
-
-
-DELIMITER $$
-
-CREATE PROCEDURE `get_unseen_announcement_for_user` (IN `p_user_id` INT)
-BEGIN
-  SELECT a.*
-  FROM announcements a
-  WHERE a.start_date <= CURDATE()
-    AND a.end_date >= CURDATE()
-    AND NOT EXISTS (
-      SELECT 1 FROM announcement_views v
-      WHERE v.announcement_id = a.id AND v.user_id = p_user_id
-    )
-  ORDER BY a.created_at DESC
-  LIMIT 1;
-END$$
-
-CREATE PROCEDURE `GetActiveUnviewedAnnouncement`(IN `p_user_id` INT)
-BEGIN
-  SELECT `id`, `title`, `body`, `photo`, `start_date`, `end_date`
-  FROM announcements
-  WHERE NOW() BETWEEN start_date AND end_date
-    AND is_active = 1
-    AND id NOT IN (
-      SELECT announcement_id FROM announcement_views WHERE user_id = p_user_id
-    )
-  ORDER BY start_date DESC;
-END$$
-
-DELIMITER ;
-
-DELIMITER $$
-
-CREATE PROCEDURE sp_GetActiveAnnouncements()
-BEGIN
-  SELECT 
-    id,
-    title,
-    photo,
-    description,
-    start_date,
-    end_date
-  FROM announcements
-  WHERE CURDATE() BETWEEN start_date AND end_date
-  ORDER BY start_date DESC;
-END $$
-
-DELIMITER ;
-
-
-
-
-
 
 -- --------------------------------------------------------
 
@@ -393,7 +284,7 @@ CREATE TABLE `admin_notifications` (
 --
 
 CREATE TABLE `alumni_requests` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` int NOT NULL,
   `user_id` int NOT NULL,
   `request_type` varchar(100) NOT NULL,
   `institute` varchar(50) DEFAULT NULL,
@@ -405,7 +296,7 @@ CREATE TABLE `alumni_requests` (
   `is_seen` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `alumni_requests`
@@ -452,12 +343,12 @@ DELIMITER ;
 --
 
 CREATE TABLE `notifications` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` int NOT NULL,
   `user_id` int NOT NULL,
   `message` text NOT NULL,
   `is_read` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `notifications`
@@ -477,7 +368,7 @@ INSERT INTO `notifications` (`id`, `user_id`, `message`, `is_read`, `created_at`
 --
 
 CREATE TABLE `requests` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` int NOT NULL,
   `user_id` int NOT NULL,
   `request_type` varchar(100) NOT NULL,
   `institute` varchar(50) DEFAULT NULL,
@@ -491,7 +382,7 @@ CREATE TABLE `requests` (
   `is_seen` tinyint(1) DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `requests`
@@ -560,7 +451,7 @@ INSERT INTO `system_settings` (`id`, `setting_key`, `setting_value`, `new_reques
 --
 
 CREATE TABLE `users` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `id` int NOT NULL,
   `stud_id` varchar(50) DEFAULT NULL,
   `full_name` varchar(100) DEFAULT NULL,
   `institute` varchar(100) DEFAULT NULL,
@@ -575,43 +466,7 @@ CREATE TABLE `users` (
   `approved_at` datetime DEFAULT NULL,
   `rejected_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `announcements`
---
-
-CREATE TABLE `announcements` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `title` VARCHAR(255) NOT NULL,
-  `details` TEXT NOT NULL,
-  `body` TEXT NOT NULL,
-  `photo` VARCHAR(255) DEFAULT NULL,
-  `is_active` TINYINT(1) DEFAULT 1,
-  `start_date` DATETIME NOT NULL,
-  `end_date` DATETIME NOT NULL,
-  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `announcement_views`
---
- CREATE TABLE `announcement_views` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `user_id` INT NOT NULL,
-  `announcement_id` INT NOT NULL,
-  `viewed_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),  -- This fixes the auto_increment issue
-  UNIQUE KEY `user_announcement_unique` (`user_id`, `announcement_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Dumping data for table `users`
@@ -619,8 +474,8 @@ CREATE TABLE `announcements` (
 
 INSERT INTO `users` (`id`, `stud_id`, `full_name`, `institute`, `program`, `email`, `password`, `role`, `pre_select_role`, `uploadphoto`, `verification_status`, `rejection_reason`, `approved_at`, `rejected_at`, `created_at`) VALUES
 (1, 'admin', 'System Administrator', NULL, NULL, 'admin@dnsc.edu.ph', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL, NULL, 'approved_student', NULL, NULL, NULL, '2025-05-11 06:00:19'),
-(2, '2023-00166', 'John Lyold C. Lozada', 'IC', 'BSIT', 'lozada.johnlyold@dnsc.edu.ph', '$2y$10$zELsc9zV.Y0GQzvbWV7ZB.g4o0ENNJauCCLNPelHPT7EhHXPbn.yO', 'alumni', 'student', '682042178e835_ako.jpg', 'approved_alumni', NULL, '2025-05-11 14:23:25', NULL, '2025-05-11 06:22:15'),
-(3, '2023-00069', 'Don Dominick Enargan', 'IC', 'BSIT', 'enargan.dondominick@dnsc.edu.ph', '$2y$10$qrkRrB/jvZOriAYKTVxpJO3sQ3BSFl//a2AFFWUWRg8oudUrS2aw6', 'student', 'student', '682042e9da46d_ako.jpg', 'approved_student', NULL, '2025-05-11 14:26:10', NULL, '2025-05-11 06:25:45');
+(4, '2023-00166', 'John Lyold C. Lozada', 'IC', 'BSIT', 'lozada.johnlyold@dnsc.edu.ph', '$2y$10$zELsc9zV.Y0GQzvbWV7ZB.g4o0ENNJauCCLNPelHPT7EhHXPbn.yO', 'alumni', 'student', '682042178e835_ako.jpg', 'approved_alumni', NULL, '2025-05-11 14:23:25', NULL, '2025-05-11 06:22:15'),
+(5, '2023-00069', 'Don Dominick Enargan', 'IC', 'BSIT', 'enargan.dondominick@dnsc.edu.ph', '$2y$10$qrkRrB/jvZOriAYKTVxpJO3sQ3BSFl//a2AFFWUWRg8oudUrS2aw6', 'student', 'student', '682042e9da46d_ako.jpg', 'approved_student', NULL, '2025-05-11 14:26:10', NULL, '2025-05-11 06:25:45');
 
 --
 -- Triggers `users`
