@@ -77,6 +77,18 @@ if (isset($_GET['status'])) {
                     <li class="nav-item"><a class="nav-link" href="approved.php"><i class="fas fa-check-circle me-2"></i> Approved Requests</a></li>
                     <li class="nav-item"><a class="nav-link" href="completed.php"><i class="fas fa-check-double me-2"></i> Completed Requests</a></li>
                     <li class="nav-item"><a class="nav-link active" href="registration_list.php"><i class="fas fa-user-check me-2"></i> Registration List</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="admin_notifications.php">
+                            <i class="fas fa-bell me-2"></i> Notifications
+                            <?php
+                            // Get notification count
+                            $notifCountQuery = $conn->query("SELECT COUNT(*) as count FROM admin_notifications WHERE is_read = 0");
+                            $notifCount = $notifCountQuery->fetch_assoc()['count'];
+                            if($notifCount > 0): ?>
+                                <span class="badge bg-danger rounded-pill position-absolute top-50 end-0 translate-middle-y me-3"><?php echo $notifCount; ?></span>
+                            <?php endif; ?>
+                        </a>
+                    </li>
                     <li class="nav-item mt-5"><a class="nav-link" href="../logout.php"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                 </ul>
             </div>
@@ -86,6 +98,14 @@ if (isset($_GET['status'])) {
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="h4">Registration List</h2>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="text" id="userSearch" class="form-control" placeholder="Search by name, ID or email...">
+                        <button class="btn btn-outline-success" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <?php if ($statusMessage): ?>
@@ -146,5 +166,23 @@ if (isset($_GET['status'])) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('userSearch');
+    searchInput.addEventListener('keyup', function() {
+        const searchValue = this.value.toLowerCase();
+        const tableRows = document.querySelectorAll('table tbody tr');
+        
+        tableRows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            if(rowText.includes(searchValue)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>
